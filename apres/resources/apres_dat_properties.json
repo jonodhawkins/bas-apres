@@ -1,0 +1,477 @@
+{
+    "Time stamp" : {
+        "alias" : "timestamp",
+        "type" : "datetime",
+        "format" : "%Y-%m-%d %H:%M:%S",
+        "example" : "2014-10-06 08:43:52",
+        "description" : "Timestamp of measured data",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "RMB_Issue" : {
+        "alias" : "RMB_Issue",
+        "type" : "str",
+        "example" : "2c",
+        "description" : "Radar Motherboard (RMB) Issue Number",
+        "valid_source" : ["measured"]
+    },
+    "VAB_Issue" : {
+        "alias" : "VAB_Issue",
+        "type" : "str",
+        "example" : "C",
+        "description" : "Venom Application Board (VAB) Issue Number",
+        "valid_source" : ["measured"]
+    },
+    "SW_Issue" : {
+        "alias" : "SW_Issue",
+        "type" : "str",
+        "example" : "102.0",
+        "description" : "Venom Software Issue Number",
+        "valid_source" : ["measured"]
+    },
+    "Venom_Issue" : {
+        "alias" : "Venom_Issue",
+        "type" : "str",
+        "example" : "20141002",
+        "description" : "Venom Operating System Issue Number",
+        "valid_source" : ["measured"]
+    },
+    "Alternate" : {
+        "alias" : "Alternate",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Set Alternate to 1 if instrument alternates between bursts using one antenna; pair and MIMO mode.  Defaults to 0.",
+        "valid_source" : ["measured"]
+    },
+    "MonoTx" : {
+        "alias" : "MonoTx",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Set to 1 if in single transmit antenna mode",
+        "valid_source" : ["measured"]
+    },
+    "MonoRx" : {
+        "alias" : "MonoRx",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Set to 1 if in single receive antenna mode",
+        "valid_source" : ["measured"]
+    },
+    "NSubBursts" : {
+        "alias" : "NSubBursts",
+        "type" : "int",
+        "example" : 20,
+        "description" : "Number of sub bursts in a radar burst",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "SubBursts in burst" : {
+        "alias" : "NSubBursts",
+        "type" : "int",
+        "example" : 20,
+        "description" : "Number of sub bursts in a radar burst",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "NData" : {
+        "alias" : "NData",
+        "type" : "int",
+        "example" : 3,
+        "description" : "Number of bursts to repeat iridium uplink attempt, if iridium enabled and in unattended mode. Setting to 0 disables uplink.",
+        "valid_source" : ["measured"]
+    },
+    "NSAFData" : {
+        "alias" : "NSAFData",
+        "type" : "int",
+        "example" : 0,
+        "description" : "NSAFData determines number of bursts to repeat SBD attempt, if iridium enabled and in unattended mode. Setting to 0 disables SBD.",
+        "valid_source" : ["measured"]
+    },
+    "Triples" : {
+        "alias" : "Triples",
+        "type" : "str",
+        "example" : "100,5,300,300,25,700,835,3,850,0,0,0",
+        "description" : "List of triples (xmin,dx,xmax) at which data is to be reported in Iridium uplink.",
+        "valid_source" : ["measured"]
+    },
+    "Average" : {
+        "alias" : "Average",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Whether sub bursts within a burst are averaged, stacked or stored individually.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "RepSecs" : {
+        "alias" : "RepSecs",
+        "type" : "int",
+        "example" : 3600,
+        "description" : "Repetition interval between measurements in unattended mode. Behaviour determined by IntervalMode.",
+        "valid_source" : ["measured"]
+    },
+    "CheckEthernet" : {
+        "alias" : "CheckEthernet",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Setting for if and when to enable Ethernet server.",
+        "valid_source" : ["measured"]
+    },
+    "N_ADC_SAMPLES" : {
+        "alias" : "N_ADC_SAMPLES",
+        "type" : "int",
+        "example" : 40000,
+        "description" : "Number of samples recorded for each burst.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Samples" : {
+        "alias" : "N_ADC_SAMPLES",
+        "type" : "int",
+        "example" : 40000,
+        "description" : "Number of samples recorded for each burst.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "MAX_DATA_FILE_LENGTH" : {
+        "alias" : "MAX_DATA_FILE_LENGTH",
+        "type" : "int",
+        "example" : 10000000,
+        "description" : "Maximum data file length before a new file is started.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "ANTENNA_SELECT" : {
+        "alias" : "ANTENNA_SELECT",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Whether to show the Tx/Rx selection box on the website.",
+        "valid_source" : ["measured"]
+    },
+    "nAttenuators" : {
+        "alias" : "nAttenuators",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Number of attenuator settings",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Housekeeping" : {
+        "alias" : "Housekeeping",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Enable daily housekeeping activities in unattended mode.",
+        "valid_source" : ["measured"]
+    },
+    "GPSon" : {
+        "alias" : "GPSon",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Timeout in seconds to wait to obtain fix before burst.",
+        "valid_source" : ["measured"]
+    },
+    "SyncGPS" : {
+        "alias" : "SyncGPS",
+        "type" : "int",
+        "example" : 0,
+        "description" : "If GPS fix is obtained during housekeeping, should VAB time be synchronised.",
+        "valid_source" : ["measured"]
+    },
+    "Iridium" : {
+        "alias" : "Iridium",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Enable upkeep activities.",
+        "valid_source" : ["measured"]
+    },
+    "WATCHDOG_TASK_SECS" : {
+        "alias" : "WATCHDOG_TASK_SECS",
+        "type" : "int",
+        "example" : 3600,
+        "description" : "Timeout period in seconds for the VAB to wait until a reset.",
+        "valid_source" : ["measured"]
+    },
+    "AlwaysAttended" : {
+        "alias" : "AlwaysAttended",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Now combined with CheckEthernet=3, should the ApRES always boot into attended mode.",
+        "valid_source" : ["measured"]
+    },
+    "IntervalMode" : {
+        "alias" : "IntervalMode",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Determines how RepSecs is related to delay between each burst", 
+        "format" : "0 = RepSecs to start of burst, 1 = RepSecs from end of burst, 2 = Sync to time of day.",
+        "valid_source" : ["measured"]
+    },
+    "Attenuator1" : {
+        "alias" : "Attenuator1",
+        "type" : "str",
+        "example" : "20,0,0,0",
+        "description" : "RF attenuator settings in comma separated list.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "AFGain" : {
+        "alias" : "AFGain",
+        "type" : "str",
+        "example" : "-14,0,0,0",
+        "description" : "AF gain settings in comma separated list.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "TxAnt" : {
+        "alias" : "TxAnt",
+        "type" : "str",
+        "example" : "1,0,0,0,0,0,0,0",
+        "description" : "Comma separated list of antennas to be used for transmit.",
+        "format" : "0 = do not transmit, 1 = transmit.",
+        "valid_source" : ["measured"]
+    },
+    "RxAnt" : {
+        "alias" : "RxAnt",
+        "type" : "str",
+        "example" : "1,0,0,0,0,0,0,0",
+        "description" : "Comma separated list of antennas to be used for receive.",
+        "format" : "0 = do not transmit, 1 = transmit.",
+        "valid_source" : ["measured"]
+    },
+    "maxDepthToGraph" : {
+        "alias" : "maxDepthToGraph",
+        "type" : "int",
+        "example" : 500,
+        "description" : "Maximum depth to graph in attended mode.",
+        "valid_source" : ["measured"]
+    },
+    "SleepMode" : {
+        "alias" : "SleepMode",
+        "type" : "int",
+        "example" : 0,
+        "description" : "If enabled, shut the radar down between measurements.",
+        "valid_source" : ["measured"]
+    },
+    "LogOn" : {
+        "alias" : "LogOn",
+        "type" : "int",
+        "example" : 1,
+        "description" : "Enable log file.",
+        "valid_source" : ["measured"]
+    },
+    "Settle_Cycles" : {
+        "alias" : "Settle_Cycles",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Number of chirps discarded before each burst",
+        "valid_source" : ["measured"]
+    },
+    "Reg00" : {
+        "alias" : "Reg00",
+        "type" : "str",
+        "example" : "00000008",
+        "description" : "AD9910 DDS Programming Register 0x00",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Reg01" : {
+        "alias" : "Reg01",
+        "type" : "str",
+        "example" : "000C0820",
+        "description" : "AD9910 DDS Programming Register 0x01",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Reg02" : {
+        "alias" : "Reg02",
+        "type" : "str",
+        "example" : "0D1F41C8",
+        "description" : "AD9910 DDS Programming Register 0x02",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Reg03" : {
+        "alias" : "Reg03",
+        "type" : "str",
+        "example" : "0000007F",
+        "description" : "AD9910 DDS Programming Register 0x03",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Reg0B" : {
+        "alias" : "Reg0B",
+        "type" : "str",
+        "example" : "6666666633333333",
+        "description" : "AD9910 DDS Programming Register 0x0B",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Reg0C" : {
+        "alias" : "Reg0C",
+        "type" : "str",
+        "example" : "000053E3000053E3",
+        "description" : "AD9910 DDS Programming Register 0x0C",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Reg0D" : {
+        "alias" : "Reg0D",
+        "type" : "str",
+        "example" : "186A186A",
+        "description" : "AD9910 DDS Programming Register 0x0D",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Reg0E" : {
+        "alias" : "Reg0E",
+        "type" : "str",
+        "example" : "08B5000000000000",
+        "description" : "AD9910 DDS Programming Register 0x0E",        
+        "valid_source" : ["measured", "simulated"]
+    },
+    "SamplingFreqMode" : {
+        "alias" : "SamplingFreqMode",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Select sampling frequency between 40 kHz or 80 kHz.",
+        "format" : "0 = 40 kHz, 1 = 80 kHz.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "BatteryCheck" : {
+        "alias" : "BatteryCheck",
+        "type" : "str",
+        "example" : "0.0,0.0",
+        "description" : "Two values (in volts) which determine battery voltage at which to wait until next burst, and secondly the voltage at which bursts will be restarted.",
+        "format" : "(disable voltage),(enable voltage)",
+        "valid_source" : ["measured"]
+    },
+    "ER_ICE" : {
+        "alias" : "ER_ICE",
+        "type" : "float",
+        "example" : "3.18",
+        "description" : "Value to use for permittivity of ice in Attended mode graphs and SBD calculations",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "GPS_TIMEOUT" : {
+        "alias" : "GPS_TIMEOUT",
+        "type" : "int",
+        "example" : 120,
+        "description" : "Maximum period in seconds to wait for GPS fix.",
+        "valid_source" : ["measured"]
+    },
+    "IR_NUM_RETRIES" : {
+        "alias" : "IR_NUM_RETRIES",
+        "type" : "int",
+        "example" : 3,
+        "description" : "Number of retry attempts to make iridium connection.",
+        "valid_source" : ["measured"]
+    },
+    "MessageTimeout" : {
+        "alias" : "MessageTimeout",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Number of hours wait keep an SBD message until successfully sent.",
+        "valid_source" : ["measured"]
+    },
+    "Latitude" : {
+        "alias" : "Latitude",
+        "type" : "float",
+        "example" : 0.0,
+        "description" : "Recorded GPS latitude of ApRES position.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "Longitude" : {
+        "alias" : "Longitude",
+        "type" : "float",
+        "example" : 0.0,
+        "description" : "Recorded GPS longitude of ApRES position.",
+        "valid_source" : ["measured", "simulated"]
+    },
+    "GPS_Time" : {
+        "alias" : "GPS_Time",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Always seems to be zero.",
+        "valid_source" : ["measured"]
+    },
+    "VM2_Time" : {
+        "alias" : "VM2_Time",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Always seems to be zero.",
+        "valid_source" : ["measured"]
+    },
+    "Temp1" : {
+        "alias" : "Temp1",
+        "type" : "float",
+        "example" : 20.8437,
+        "description" : "Measured temperature.",
+        "valid_source" : ["measured"]
+    },
+    "Temp2" : {
+        "alias" : "Temp2",
+        "type" : "float",
+        "example" : 21.0312,
+        "description" : "Measured temperature.",
+        "valid_source" : ["measured"]
+    },
+    "BatteryVoltage" : {
+        "alias" : "BatteryVoltage",
+        "type" : "float",
+        "example" : 6.543,
+        "description" : "Measured battery voltage.",
+        "valid_source" : ["measured"]
+    },
+    "BurstNo" : {
+        "alias" : "BurstNo",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Seems to be an unused variable in system state.",
+        "valid_source" : ["measured"]
+    },
+    "IsEthOn" : {
+        "alias" : "IsEthOn",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Ethernet disabled = 0, Ethernet enabled = 1.",
+        "valid_source" : ["measured"]
+    },
+    "IsFTPServerOn" : {
+        "alias" : "IsFTPServerOn",
+        "type" : "int",
+        "example" : 0,
+        "description" : "FTP Server disabled = 0, FTP Server enabled = 1.",
+        "valid_source" : ["measured"]
+    },
+    "IsWebServerOn" : {
+        "alias" : "IsWebServerOn",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Web Server disabled = 0, Web Server enabled = 1.",
+        "valid_source" : ["measured"]
+    },
+    "Uptell" : {
+        "alias" : "Uptell",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Do not use irdium for uptell = 0, Use uptell over iridium = 1.",
+        "valid_source" : ["measured"]
+    },
+    "InterChirpDelay" : {
+        "alias" : "InterChirpDelay",
+        "type" : "int",
+        "example" : 50,
+        "description" : "Delay between each individual chirp.",
+        "valid_source" : ["measured"]
+    },
+    "BattSleep" : {
+        "alias" : "BattSleep",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Internal battery sleep.",
+        "valid_source" : ["measured"]
+    },
+    "MAX_SAF_FILE_LENGTH" : {
+        "alias" : "MAX_SAF_FILE_LENGTH",
+        "type" : "int",
+        "example" : 0,
+        "description" : "Maximum file length for SAF updates.",
+        "valid_source" : ["measured"]
+    },
+    "NoDwell" : {
+        "alias" : "NoDwell",
+        "type" : "int",
+        "example" : 0,
+        "description" : "DDS dwell control bit.",
+        "valid_source" : ["measured"]
+    },
+    "Ramp" : {
+        "alias" : "Ramp",
+        "type" : "int",
+        "example" : 0,
+        "description" : "DDS ramp control bit.",
+        "valid_source" : ["measured"]
+    }
+}

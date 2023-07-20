@@ -4,16 +4,32 @@
 # Author:  Paul M. Breen
 # Date:    2018-09-24
 ###############################################################################
+# Modified:
+#   Author:  Jonathan D. Hawkins
+#   Date:    2023-07-20
+#   Purpose: Parses ApRES header data into processable formats
+###############################################################################
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
-import re
+import datetime
+import importlib.resources
+import json
 import os
+import re
 import sys
 import warnings
 
 import numpy as np
 from netCDF4 import Dataset
+
+# Load valid *.dat file properties into memory
+DAT_FILE_PROPERTIES = json.loads(
+    importlib.resources.read_text(
+        "apres.resources", 
+        "apres_dat_properties.json"
+    )
+)
 
 class ApRESBurst(object):
     """
@@ -33,7 +49,17 @@ class ApRESBurst(object):
         'data_type_key': 'Average',
         'data_types': ['<u2','<f4','<u4'],
         'data_dim_keys': ['NSubBursts', 'N_ADC_SAMPLES'],
-        'data_dim_order': 'C'
+        'data_dim_order': 'C',
+        'dds_sys_clock_frequency' : 1e9,
+        'dds_registers' : {
+            'reg00' : "00000008",
+            'reg01' : "000C0820",
+            'reg02' : "0D1F41C8",
+            'reg0B' : "6666666633333333",
+            'reg0C' : "000053E3000053E3",
+            'reg0D' : "186A186A",
+            'reg0E' : "08B5000000000000",
+        }
     }
 
     ALTERNATIVES = [{
@@ -58,6 +84,10 @@ class ApRESBurst(object):
         :param fp: The open file object of the input file
         :type fp: file object
         """
+
+        # Add immutable attribute list to prevent overwrite of header values
+        # needs to be first attribute defined
+        self._immutable_attr = []
 
         self.header_start = 0
         self.data_start = -1
@@ -105,6 +135,178 @@ class ApRESBurst(object):
             self.header_lines.append(line.rstrip())
 
         return self.header_lines
+    
+    def parse_header_lines(self):
+        for line in self.header_lines:
+            self._parse_header_line(line)
+
+    def _parse_header_line(self, header_line):
+        """
+        Parse raw header lines and assign property to the ApRESBurst object
+
+        [more detail here]
+
+        Returns (param_alias, param_value) which correspond to:
+            param_alias : machine friendly version of header parameter name
+            param_value : parsed version of the header parameter value
+        """
+        if len(header_line) == 0:
+            return None
+        
+        for header_marker in self.DEFAULTS["header_markers"].values():
+            if header_line in header_marker:
+                return None
+
+        # Contract header regex based on format delimiter
+        header_parts = re.match(r"(.+)" + self.DEFAULTS["header_line_delim"] + r"(.*)", header_line)
+        
+        if header_parts == None:
+            raise ValueError(f"Invalid header line '{header_line}' should match key=value format.")
+        
+        param_name = header_parts.group(1)
+        param_value = header_parts.group(2)
+
+        if not param_name in DAT_FILE_PROPERTIES:
+            if self.DEFAULTS['forgive']:
+                # TODO: deal with incorrect header here
+                return
+            else:
+                raise KeyError(f"Invalid header key {param_name}.")
+            
+        param_type = DAT_FILE_PROPERTIES[param_name]["type"]
+        if param_type == "int":
+            param_value = int(param_value)
+        elif param_type =="float":
+            param_value = float(param_value)
+
+        # Parse special value if available 
+        param_value = ApRESBurst.parse_special_parameter(
+            param_name, param_value
+        )
+
+        # Get alias name
+        param_alias = DAT_FILE_PROPERTIES[param_name]["alias"]
+
+        # assign to object
+        self._add_immutable_attribute(param_alias, param_value)
+
+    def _add_immutable_attribute(self, name, value):
+        """
+        Adds a new immutable attribute to the class
+        """
+        setattr(self, name, value)
+        self._immutable_attr.append(name)
+    
+    def __setattr__(self, name, value):
+        """
+        Makes immutable header values
+        """
+        if name == "_immutable_attr":
+            object.__setattr__(self, "_immutable_attr", value)
+        elif name in self._immutable_attr:
+            raise AttributeError(f"Denied access to header variable {name}.")
+        else:
+            object.__setattr__(self, name, value)
+    
+    @staticmethod
+    def parse_special_parameter(parameter, value):
+        """
+        Handle special header parameters (arrays and dates)
+
+        Converts 'Time stamp' header to a datetime.datetime object and 'TxAnt' 
+        or 'RxAnt' arrays to Python lists
+        """
+
+        # Parse Time Stamp
+        if parameter.lower() == "time stamp":
+            return datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        
+        elif parameter == "TxAnt":
+            return [int(v) for v in value.split(",")]
+
+        elif parameter == "RxAnt":
+            return [int(v) for v in value.split(",")]#
+
+        else:
+            return value
+        
+    def parse_dds_registers(self):
+        """
+        Converts DDS registers into meaningful chirp properties
+
+        Converts DDS regsiters into chirp bandwidth and centre frequency
+        then assigns additional chirp parameters such as period and sampling
+        frequency.
+        """
+        # Set default register values
+        reg0B = self.DEFAULTS["dds_registers"]["reg0B"]
+        reg0C = self.DEFAULTS["dds_registers"]["reg0C"]
+        reg0D = self.DEFAULTS["dds_registers"]["reg0D"]
+
+        # Check whether we have all of the mandatory registers assigned
+        #   if not and we are forgiving, then use default values
+        #   if not and we are not forgiving then raise AttributeError
+        required_dds_registers = ("Reg0B", "Reg0C", "Reg0D")
+        dds_registers_valid = True
+        for reg in required_dds_registers:
+            if reg not in self._immutable_attr:
+                if self.DEFAULTS["forgive"]:
+                    dds_registers_valid = False
+                    break
+                else:
+                    raise AttributeError(f"Register {reg} not present in header")
+                
+        # if they are valid then assign from the values read in from the header
+        if dds_registers_valid:
+            DDS_REGEX = r'[^0-9A-Fa-f]?([0-9a-fA-F]+)[^0-9a-fA-F]?'
+
+            reg0B = re.match(DDS_REGEX, self.Reg0B).group(1)
+            reg0C = re.match(DDS_REGEX, self.Reg0C).group(1)
+            reg0D = re.match(DDS_REGEX, self.Reg0D).group(1)
+
+        # Assign upper and lower frequency limits
+        if len(reg0B) == 16:
+            f_upper = np.round(int(reg0B[0:8], 16) / (2**32) * self.DEFAULTS["dds_sys_clock_frequency"])
+            f_lower = np.round(int(reg0B[8:16], 16) / (2**32) * self.DEFAULTS["dds_sys_clock_frequency"])
+        else:
+            raise ValueError("Invalid DDS Reg0B length ({:d}{:s}).".format(len(reg0B), reg0B))
+
+        # Assign frequency steps
+        if len(reg0C) == 16:
+            df_negative = int(reg0C[0:8], 16) / (2**32) * self.DEFAULTS["dds_sys_clock_frequency"]
+            df_positive = int(reg0C[8:16], 16) / (2**32) * self.DEFAULTS["dds_sys_clock_frequency"]
+        else:
+            raise ValueError("Invalid DDS Reg0C length ({:d}:{:s}).".format(len(reg0C), reg0C))
+        
+        # Assign time steps
+        if len(reg0D) == 8:
+            dt_negative = int(reg0D[0:4], 16) / self.DEFAULTS["dds_sys_clock_frequency"] * 4
+            dt_positive = int(reg0D[4:8], 16) / self.DEFAULTS["dds_sys_clock_frequency"] * 4
+        else:
+            raise ValueError("Invalid DDS Reg0D length ({:d}:{:s}).".format(len(reg0D), reg0D))
+
+        # Calculate center frequency
+        fc = np.round((f_upper + f_lower) / 2)
+    
+        # Calculate bandwidth
+        B = np.round(f_upper - f_lower)
+
+        # Calculate period
+        T = B / df_positive * dt_positive
+
+        try:
+            if self.SamplingFreqMode == 1:
+                fs = 80e3 
+            else:
+                fs = 40e3
+        except AttributeError:
+            # Default to 40 kHz
+            fs = 40e3
+
+        self._add_immutable_attribute('T', T)
+        self._add_immutable_attribute('B', B)
+        self._add_immutable_attribute('fc', fc)
+        self._add_immutable_attribute('fs', fs)
 
     def determine_file_format_version(self):
         """
@@ -222,6 +424,10 @@ class ApRESBurst(object):
         # The header lines are used to configure this object
         self.read_header_lines()
         self.configure_from_header()
+        
+        self.parse_header_lines()
+        # Parse DDS registers from header values
+        self.parse_dds_registers()
 
         return self.header
 

@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import Mock, patch
+import datetime
 import os
 import warnings
 import tempfile
@@ -500,6 +501,32 @@ class TestApRESBurst(unittest.TestCase):
         expected_header_lines = ['\r\n*** Burst Header ***', 'Samples:60000', 'SubBursts in burst:100', 'Time stamp:2013-12-27 10:32:31', 'Average:2', '\r\n*** End Header ***']
         header = {'Samples': '60000', 'SubBursts in burst': '100', 'Time stamp': '2013-12-27 10:32:31', 'Average': '2'}
         self.compare_reconstructed_header_lines(header, expected_header_lines)
+
+    def test_header_timestamp_conversion(self):
+        in_file = self.base + '/short-test-data.dat'
+        with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+            f = ApRESBurst(fp)
+            f.read_header()
+            self.assertTrue(isinstance(f.timestamp, datetime.datetime))
+            self.assertEqual(f.timestamp, datetime.datetime(2014,12,12,19,42,6))
+
+    def test_header_integer_conversion(self):
+        in_file = self.base + '/short-test-data.dat'
+        with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+            f = ApRESBurst(fp)
+            f.read_header()
+            self.assertTrue(isinstance(f.WATCHDOG_TASK_SECS, int))
+            self.assertEqual(f.WATCHDOG_TASK_SECS, 3600)
+
+
+    def test_immutable_parameter(self):        
+        in_file = self.base + '/short-test-data.dat'
+        with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+            f = ApRESBurst(fp)
+            f.read_header()
+            print(f.nAttenuators)
+            with self.assertRaises(AttributeError):
+                f.nAttenuators = 10
 
 class TestApRESFile(unittest.TestCase):
 

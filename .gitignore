@@ -5,3 +5,5 @@ __pycache__/
 dist/
 example_data/
 .pytest_cache/
+.venv/
+.vscode/
