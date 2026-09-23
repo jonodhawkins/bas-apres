@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 import datetime
+import pytest
 import os
 import warnings
 import tempfile
@@ -12,7 +13,7 @@ from netCDF4 import Dataset
 from apres import __version__, ApRESBurst, ApRESFile
 
 def test_version():
-    assert __version__ == '0.1.1'
+    assert __version__ == '0.4.2'
 
 class TestApRESBurst(unittest.TestCase):
 
@@ -89,6 +90,13 @@ class TestApRESBurst(unittest.TestCase):
         #self.assertEqual(':', f.DEFAULTS['header_line_delim'])
         #self.assertEqual(['SubBursts in burst', 'Samples'], f.DEFAULTS['data_dim_keys'])
 
+    def test_define_data_dim_keys_ok(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0']
+        f.store_header()
+        f.define_data_shape()
+        self.assertEqual(['NSubBursts','N_ADC_SAMPLES'], f.data_dim_keys)
+
     def test_define_data_shape_ok(self):
         f = ApRESBurst()
         f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0']
@@ -128,6 +136,100 @@ class TestApRESBurst(unittest.TestCase):
         with self.assertRaises(KeyError):
             f.define_data_shape()
 
+    def test_define_data_shape_optional_dim_key_missing(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0']
+        f.store_header()
+        f.define_data_shape()
+
+    def test_define_data_shape_optional_dim_key_missing_value(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=']
+        f.store_header()
+
+        with self.assertWarns(UserWarning):
+            f.define_data_shape()
+
+    def test_define_data_shape_optional_dim_key_non_integer_value(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=0.5']
+        f.store_header()
+
+        with self.assertWarns(UserWarning):
+            f.define_data_shape()
+
+    def test_define_data_shape_flatten_default_eq_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=1']
+        f.store_header()
+        f.define_data_shape()
+        self.assertEqual(['NSubBursts','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,40001), f.data_shape)
+
+    def test_define_data_shape_flatten_default_gt_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=2']
+        f.store_header()
+        f.define_data_shape()
+        self.assertEqual(['NSubBursts','nAttenuators','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,2,40001), f.data_shape)
+
+    def test_define_data_shape_flatten_unity_eq_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=1']
+        f.store_header()
+        f.define_data_shape(flatten='unity')
+        self.assertEqual(['NSubBursts','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,40001), f.data_shape)
+
+    def test_define_data_shape_flatten_unity_gt_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=2']
+        f.store_header()
+        f.define_data_shape(flatten='unity')
+        self.assertEqual(['NSubBursts','nAttenuators','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,2,40001), f.data_shape)
+
+    def test_define_data_shape_flatten_always_eq_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=1']
+        f.store_header()
+        f.define_data_shape(flatten='always')
+        self.assertEqual(['NSubBursts','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,40001), f.data_shape)
+
+    def test_define_data_shape_flatten_always_gt_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=2']
+        f.store_header()
+        f.define_data_shape(flatten='always')
+        self.assertEqual(['NSubBursts','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,80002), f.data_shape)
+
+    def test_define_data_shape_flatten_never_eq_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=1']
+        f.store_header()
+        f.define_data_shape(flatten='never')
+        self.assertEqual(['NSubBursts','nAttenuators','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,1,40001), f.data_shape)
+
+    def test_define_data_shape_flatten_never_gt_1(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=2']
+        f.store_header()
+        f.define_data_shape(flatten='never')
+        self.assertEqual(['NSubBursts','nAttenuators','N_ADC_SAMPLES'], f.data_dim_keys)
+        self.assertEqual((100,2,40001), f.data_shape)
+
+    def test_define_data_shape_flatten_invalid_value(self):
+        f = ApRESBurst()
+        f.header_lines = ['NSubBursts=100','N_ADC_SAMPLES=40001','Average=0','nAttenuators=1']
+        f.store_header()
+
+        with self.assertRaises(ValueError):
+            f.define_data_shape(flatten='unsupported')
+
     def test_define_data_type_ok(self):
         f = ApRESBurst()
         f.header_lines = ['Average=0']
@@ -162,7 +264,7 @@ class TestApRESBurst(unittest.TestCase):
     def test_read_header_ok(self):
         in_file = self.base + '/short-test-data.dat'
 
-        with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+        with open(in_file, mode='rb') as fp:
             f = ApRESBurst(fp)
             f.read_header()
 
@@ -170,14 +272,14 @@ class TestApRESBurst(unittest.TestCase):
         in_file = self.base + '/non-existent-file'
 
         with self.assertRaises(FileNotFoundError):
-            with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+            with open(in_file, mode='rb') as fp:
                 f = ApRESBurst(fp)
                 f.read_header()
 
     def test_read_header_configures_object(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
         f.read_header()
         self.assertEqual(804, f.data_start)
@@ -187,10 +289,44 @@ class TestApRESBurst(unittest.TestCase):
         self.assertEqual('12.2058', f.header['BatteryVoltage'])
         fp.close()
 
+    def test_read_header_lines_decode_error(self):
+        in_file = self.base + '/short-test-data.dat'
+
+        fp = open(in_file)
+        f = ApRESBurst(fp)
+
+        with self.assertRaises(UnicodeDecodeError):
+            f.read_header_lines()
+
+        fp.close()
+
+    def test_read_header_lines_decode_text_error(self):
+        in_file = self.base + '/short-test-data.dat'
+
+        fp = open(in_file, mode='r')
+        f = ApRESBurst(fp)
+
+        with self.assertRaises(UnicodeDecodeError):
+            f.read_header_lines()
+
+        fp.close()
+
+    def test_read_header_lines_decode_binary(self):
+        in_file = self.base + '/short-test-data.dat'
+
+        fp = open(in_file, mode='rb')
+        f = ApRESBurst(fp)
+        f.read_header_lines()
+        assert hasattr(f.fp, 'mode')
+        assert f.fp.mode == 'rb'
+        assert hasattr(f.fp, 'encoding')
+        assert f.fp.encoding == ApRESFile.DEFAULTS['file_encoding']
+        fp.close()
+
     def test_read_data_ok(self):
         in_file = self.base + '/short-test-data.dat'
 
-        with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+        with open(in_file, mode='rb') as fp:
             f = ApRESBurst(fp)
             f.read_data()
 
@@ -198,14 +334,14 @@ class TestApRESBurst(unittest.TestCase):
         in_file = self.base + '/non-existent-file'
 
         with self.assertRaises(FileNotFoundError):
-            with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+            with open(in_file, mode='rb') as fp:
                 f = ApRESBurst(fp)
                 f.read_data()
 
     def test_read_data_reads_header_first_if_not_already_done(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
         self.assertEqual(-1, f.data_start)
         self.assertEqual(0, len(f.header))
@@ -217,19 +353,16 @@ class TestApRESBurst(unittest.TestCase):
     def test_read_data_does_not_read_header_if_already_done(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
 
         # Setting an arbitrary file offset position for the start of the data
         # section, will mess up reading the data.  The data cannot be reshaped,
         # because data_shape is an empty tuple.  We catch the ValueError thrown
         # when reshaping, because we check to see if the data are shorter or
-        # longer than expected.  As the data_shape tuple is empty though, we
-        # will cause an IndexError
+        # longer than expected
         f.data_start = 7
-
-        with self.assertRaises(IndexError):
-            f.read_data()
+        f.read_data()
 
         self.assertEqual(0, len(f.data_shape))
         self.assertEqual(0, len(f.header))
@@ -238,17 +371,17 @@ class TestApRESBurst(unittest.TestCase):
     def test_read_data_shapes_the_data_according_to_header(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
         f.read_data()
         self.assertEqual(f.data_shape, f.data.shape)
-        self.assertEqual(f.data_shape[0] * f.data_shape[1], f.data.size)
+        self.assertEqual(int(np.prod(f.data_shape)), f.data.size)
         fp.close()
 
     def test_read_data_fails_to_shape_shorter_data(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
         f.read_data()
 
@@ -269,7 +402,7 @@ class TestApRESBurst(unittest.TestCase):
     def test_read_data_forgives_to_shape_longer_data(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
         f.read_data()
 
@@ -290,14 +423,14 @@ class TestApRESBurst(unittest.TestCase):
             warnings.simplefilter("ignore")
             f.reshape_data()
             self.assertEqual(f.data_shape, f.data.shape)
-            self.assertEqual(f.data_shape[0] * f.data_shape[1], f.data.size)
+            self.assertEqual(int(np.prod(f.data_shape)), f.data.size)
 
         fp.close()
 
     def test_read_data_fails_to_shape_longer_data(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
         f.read_data()
 
@@ -324,7 +457,7 @@ class TestApRESBurst(unittest.TestCase):
     def test_read_data_reads_expected_values(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         f = ApRESBurst(fp)
         f.read_data()
         self.assertEqual(33774, f.data[0, 0])
@@ -350,23 +483,23 @@ class TestApRESBurst(unittest.TestCase):
     def test_write_header_ok(self):
         in_file = self.base + '/short-test-data.dat'
  
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
 
         # We mock the call to write() to avoid writing an output file
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         fin.write_header(fout)
-        fout.write.assert_any_call('NSubBursts=1\r\n')
+        fout.write.assert_any_call(b'NSubBursts=1\r\n')
         fp.close()
 
     def test_write_header_reads_header_first_if_not_already_done(self):
         in_file = self.base + '/short-test-data.dat'
  
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
 
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         self.assertEqual(-1, fin.data_start)
         self.assertEqual(0, len(fin.header))
@@ -375,40 +508,53 @@ class TestApRESBurst(unittest.TestCase):
         self.assertNotEqual(0, len(fin.header))
         fp.close()
 
+    def test_write_header_binary_adds_encoding(self):
+        in_file = self.base + '/short-test-data.dat'
+ 
+        fp = open(in_file, mode='rb')
+        fin = ApRESBurst(fp)
+
+        fout = Mock(write=Mock(), mode='wb', spec=True)
+
+        fin.write_header(fout)
+        assert hasattr(fout, 'encoding')
+        assert fout.encoding == ApRESFile.DEFAULTS['file_encoding']
+        fp.close()
+
     def test_write_header_modified_eol(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
 
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         with patch.dict(fin.DEFAULTS, {'header_line_eol': '\n'}):
             fin.write_header(fout)
-            fout.write.assert_any_call('NSubBursts=1\n')
+            fout.write.assert_any_call(b'NSubBursts=1\n')
 
         fp.close()
 
     def test_write_header_rewrite_dimensions(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
  
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         fin.write_header(fout, samples=range(10))
-        fout.write.assert_any_call('N_ADC_SAMPLES=10\r\n')
+        fout.write.assert_any_call(b'N_ADC_SAMPLES=10\r\n')
 
         fp.close()
 
     def test_write_header_rewrite_dimensions_invalid_kwarg_type(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
  
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         with self.assertRaises(TypeError):
             # Keyword argument `samples` must be a range object
@@ -419,10 +565,10 @@ class TestApRESBurst(unittest.TestCase):
     def test_write_data_ok(self):
         in_file = self.base + '/short-test-data.dat'
  
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
 
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         fin.write_data(fout)
         self.assertEqual(fin.data.shape, fin.data_shape)
@@ -432,10 +578,10 @@ class TestApRESBurst(unittest.TestCase):
     def test_write_data_reads_data_first_if_not_already_done(self):
         in_file = self.base + '/short-test-data.dat'
  
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
 
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         self.assertEqual(-1, fin.data_start)
         self.assertEqual(0, len(fin.header))
@@ -447,10 +593,10 @@ class TestApRESBurst(unittest.TestCase):
     def test_write_data_uses_default_dimensions(self):
         in_file = self.base + '/short-test-data.dat'
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
  
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         fin.write_data(fout)
         subbursts = range(fin.data_shape[0])
@@ -465,10 +611,10 @@ class TestApRESBurst(unittest.TestCase):
         in_file = self.base + '/short-test-data.dat'
         samples = range(10)
 
-        fp = open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding'])
+        fp = open(in_file, mode='rb')
         fin = ApRESBurst(fp)
  
-        fout = Mock(write=Mock())
+        fout = Mock(write=Mock(), mode='wb', spec=True)
 
         fin.write_data(fout, samples=samples)
         subbursts = range(fin.data_shape[0])
@@ -547,6 +693,9 @@ class TestApRESFile(unittest.TestCase):
 
     base = os.path.dirname(__file__)
 
+    # Common fsspec options for unauthenticated access to remote files
+    fs_opts = {'anon': True}
+
     def test_override_path_in_open(self):
         non_existent_file = self.base + '/non-existent-file'
         existent_file = self.base + '/short-test-data.dat'
@@ -576,6 +725,72 @@ class TestApRESFile(unittest.TestCase):
 
         f = ApRESFile()
         f.open(in_file)
+        f.read()
+        f.close()
+
+    def test_no_mode_error(self):
+        in_file = self.base + '/short-test-data.dat'
+
+        f = ApRESFile(in_file, mode=None)
+
+        with self.assertRaises(TypeError):
+            f.open(mode=None)
+
+    def test_mode_forced_to_binary(self):
+        in_file = self.base + '/short-test-data.dat'
+
+        f = ApRESFile(in_file)
+        f.open(mode=None)
+        assert hasattr(f, 'mode')
+        assert 'b' in f.mode
+        assert hasattr(f.fp, 'mode')
+        assert 'b' in f.fp.mode
+        f.read()
+        f.close()
+
+        f = ApRESFile(in_file, mode='rb')
+        f.open(mode=None)
+        assert hasattr(f, 'mode')
+        assert 'b' in f.mode
+        assert hasattr(f.fp, 'mode')
+        assert 'b' in f.fp.mode
+        f.read()
+        f.close()
+
+        f = ApRESFile(in_file, mode='r')
+        f.open(mode=None)
+        assert hasattr(f, 'mode')
+        assert 'b' in f.mode
+        assert hasattr(f.fp, 'mode')
+        assert 'b' in f.fp.mode
+        f.read()
+        f.close()
+
+        f = ApRESFile(in_file, mode=None)
+        f.open(mode='rb')
+        assert hasattr(f, 'mode')
+        assert 'b' in f.mode
+        assert hasattr(f.fp, 'mode')
+        assert 'b' in f.fp.mode
+        f.read()
+        f.close()
+
+        f = ApRESFile(in_file, mode=None)
+        f.open(mode='r')
+        assert hasattr(f, 'mode')
+        assert 'b' in f.mode
+        assert hasattr(f.fp, 'mode')
+        assert 'b' in f.fp.mode
+        f.read()
+        f.close()
+
+    def test_encoding_set_in_open(self):
+        in_file = self.base + '/short-test-data.dat'
+
+        f = ApRESFile(in_file)
+        f.open()
+        assert hasattr(f.fp, 'encoding')
+        assert f.fp.encoding == ApRESFile.DEFAULTS['file_encoding']
         f.read()
         f.close()
 
@@ -613,6 +828,19 @@ class TestApRESFile(unittest.TestCase):
 
             assert in_nbursts == 5
             assert out_nbursts == 3
+
+    @pytest.mark.remote
+    def test_remote_load_s3(self):
+        remote_dat = 's3://apres-tests/short-test-data.dat'
+        local_dat = self.base + '/short-test-data.dat'
+
+        with ApRESFile(remote_dat, fs_opts=self.fs_opts) as f_remote:
+            f_remote.read()
+
+        with ApRESFile(local_dat) as f_local:
+            f_local.read()
+
+        assert all((f_local.bursts[n].data == f_remote.bursts[n].data).all() for n in range(len(f_local.bursts)))
 
 class TestConversion(unittest.TestCase):
 

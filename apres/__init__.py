@@ -10,7 +10,13 @@
 #   Purpose: Parses ApRES header data into processable formats
 ###############################################################################
 
-__version__ = '0.1.2'
+"""
+Package for working with BAS ApRES files
+
+The package contains classes for working with ApRES .dat files.  It enables the files to be read, rewritten, and converted.
+"""
+
+__version__ = '0.4.2'
 
 import datetime
 import importlib.resources
@@ -43,12 +49,13 @@ class ApRESBurst(object):
             'start': '\r\n*** Burst Header ***',
             'end': '\r\n*** End Header ***'
         },
-        'end_of_header_re': '\*\*\* End Header',
+        'end_of_header_re': r'\*\*\* End Header',
         'header_line_delim': '=',
         'header_line_eol': '\r\n',
         'data_type_key': 'Average',
         'data_types': ['<u2','<f4','<u4'],
         'data_dim_keys': ['NSubBursts', 'N_ADC_SAMPLES'],
+        'data_dim_optional_keys': ['nAttenuators'],
         'data_dim_order': 'C',
         'dds_sys_clock_frequency' : 1e9,
         'dds_registers' : {
@@ -93,6 +100,7 @@ class ApRESBurst(object):
         self.data_start = -1
         self.header_lines = []
         self.header = {}
+        self.data_dim_keys = []
         self.data_shape = ()
         self.data_type = '<u2'
         self.data = None
@@ -114,6 +122,10 @@ class ApRESBurst(object):
         """
         Read the raw header lines from the file
 
+        * We require an encoding to ensure that we can decode the text header
+          lines.  ApRESFile adds encoding to self.fp.  If encoding isn't set
+          in self.fp, we fallback to ApRESFile default encoding
+
         :returns: The raw header lines
         :rtype: list
         """
@@ -121,8 +133,14 @@ class ApRESBurst(object):
         self.data_start = -1
         self.header_lines = []
 
+        if not hasattr(self.fp, 'encoding'):
+            self.fp.encoding = ApRESFile.DEFAULTS['file_encoding']
+
         self.fp.seek(self.header_start, 0)
         line = self.fp.readline()
+        if isinstance(line, bytes):
+            line = line.decode(self.fp.encoding)
+
         self.header_lines.append(line.rstrip())
 
         while(line):
@@ -132,6 +150,9 @@ class ApRESBurst(object):
                 break
 
             line = self.fp.readline()
+            if isinstance(line, bytes):
+                line = line.decode(self.fp.encoding)
+
             self.header_lines.append(line.rstrip())
 
         return self.header_lines
@@ -346,7 +367,7 @@ class ApRESBurst(object):
 
         return self.header
 
-    def define_data_shape(self):
+    def define_data_shape(self, flatten='unity'):
         """
         Parse the data dimensions from the header to define the data shape
 
@@ -354,18 +375,58 @@ class ApRESBurst(object):
         subbursts have been aggregated to a single value, so we rewrite that
         dimension as 1
 
+        In special cases, the data may be stored in additional dimensions.
+        We detect and store these optional dimension metadata, to enable
+        the data to be reshaped accordingly.  These optional dimensions are
+        used according to the value of the `flatten` kwarg:
+
+        * always: An optional dimension is always flattened, so that
+          data_shape[1] is the product of itself and any optional dimensions
+        * unity: An optional dimension with length == 1 is flattened into
+          data_shape[1], otherwise if its length > 1, then it is stored
+          as an additional dimension
+        * never: An optional dimension is never flattened and is stored as
+          an additional dimension
+
+        :param flatten: Controls flattening optional dimensions.  Must be one
+        of ['always','unity','never']
+        :type flatten: str
         :returns: The data shape
         :rtype: tuple
         """
 
+        self.data_dim_keys = []
         self.data_shape = ()
         data_shape = []
+        opts_flatten = ['always','unity','never']
+
+        if flatten.lower() not in opts_flatten:
+            raise ValueError(f"Unsupported flatten option {flatten}, must be one of {opts_flatten}")
 
         for key in self.DEFAULTS['data_dim_keys']:
+            self.data_dim_keys.append(key)
             data_shape.append(int(self.header[key]))
 
         if int(self.header[self.DEFAULTS['data_type_key']]) > 0:
             data_shape[0] = 1
+
+        for key in self.DEFAULTS['data_dim_optional_keys']:
+            try:
+                m = int(self.header[key])
+
+                if flatten.lower() == 'always':
+                    data_shape[1] *= m
+                elif flatten.lower() == 'unity':
+                    if m > 1:
+                        self.data_dim_keys.insert(1, key)
+                        data_shape.insert(1, m)
+                elif flatten.lower() == 'never':
+                    self.data_dim_keys.insert(1, key)
+                    data_shape.insert(1, m)
+            except KeyError:
+                pass
+            except ValueError:
+                warnings.warn(f"File header optional dimension key {key} has an invalid value so cannot be used as a dimension.")
 
         self.data_shape = tuple(data_shape)
 
@@ -452,7 +513,7 @@ class ApRESBurst(object):
         try:
             self.data = np.reshape(self.data, self.data_shape, order=self.DEFAULTS['data_dim_order'])
         except ValueError as e:
-            expected_len = self.data_shape[0] * self.data_shape[1]
+            expected_len = int(np.prod(self.data_shape))
 
             if self.data.size < expected_len:
                 warnings.warn("Data array read from file doesn't match data_shape as read from the file header: {}. It is shorter than expected. Cannot continue.")
@@ -482,9 +543,10 @@ class ApRESBurst(object):
         if self.data_start == -1:
             self.read_header()
 
-        count = self.data_shape[0] * self.data_shape[1]
+        count = int(np.prod(self.data_shape))
         self.fp.seek(self.data_start, 0)
-        self.data = np.fromfile(self.fp, dtype=np.dtype(self.data_type), count=count)
+        buf = self.fp.read(count * np.dtype(self.data_type).itemsize)
+        self.data = np.frombuffer(buf, dtype=np.dtype(self.data_type), count=count)
         self.reshape_data()
 
         return self.data
@@ -532,6 +594,9 @@ class ApRESBurst(object):
         if self.data_start == -1:
             self.read_header()
 
+        if not hasattr(fp, 'encoding'):
+            fp.encoding = ApRESFile.DEFAULTS['file_encoding']
+
         eol = self.DEFAULTS['header_line_eol']
 
         for line in self.header_lines:
@@ -541,7 +606,10 @@ class ApRESBurst(object):
             if samples and re.match(self.DEFAULTS['data_dim_keys'][1], line):
                 line = self.format_header_line(self.DEFAULTS['data_dim_keys'][1], len(samples))
 
-            fp.write(line + eol)
+            line = line + eol
+            line = line.encode(fp.encoding)
+
+            fp.write(line)
 
     def write_data(self, fp, subbursts=None, samples=None):
         """
@@ -558,12 +626,23 @@ class ApRESBurst(object):
         if self.data_start == -1:
             self.read_data()
 
-        if not subbursts:
-            subbursts = range(self.data_shape[0])
-        if not samples:
-            samples = range(self.data_shape[1])
+        ndims = len(self.data.shape)
 
-        fp.write(np.asarray(self.data[subbursts.start:subbursts.stop:subbursts.step, samples.start:samples.stop:samples.step], order=self.DEFAULTS['data_dim_order']))
+        if not subbursts:
+            subbursts = range(self.data.shape[0])
+
+        if ndims > 2:
+            if not samples:
+                samples = range(self.data.shape[2])
+
+            data_slice = self.data[subbursts.start:subbursts.stop:subbursts.step, :, samples.start:samples.stop:samples.step]
+        else:
+            if not samples:
+                samples = range(self.data.shape[1])
+
+            data_slice = self.data[subbursts.start:subbursts.stop:subbursts.step, samples.start:samples.stop:samples.step]
+
+        fp.write(np.asarray(data_slice, order=self.DEFAULTS['data_dim_order']))
 
 class ApRESFile(object):
     """
@@ -583,15 +662,21 @@ class ApRESFile(object):
         }
     }
 
-    def __init__(self, path=None):
+    def __init__(self, path=None, mode='rb', fs_opts={}):
         """
         Constructor
 
         :param path: Path to the file
         :type path: str
+        :param mode: Mode in which to open the file
+        :type mode: str
+        :param fs_opts: Any kwargs required for opening a url using fsspec
+        :type fs_opts: dict
         """
 
         self.path = path
+        self.mode = mode
+        self.fs_opts = fs_opts
         self.fp = None
         self.file_size = -1
         self.bursts = []
@@ -622,14 +707,22 @@ class ApRESFile(object):
 
         return False         # This ensures any exception is re-raised
 
-    def open(self, path=None, mode='r'):
+    def open(self, path=None, mode=None, fs_opts=None):
         """
         Open the given file
+
+        * If open mode is not binary, then we force it to be so
+        * We store the default encoding in self.fp so that the header can be
+          correctly decoded
+        * If path is an fsspec URL (e.g. s3://, gs:// etc.) then provide any
+          necessary options to open the file (e.g. credentials) in fs_opts
 
         :param path: Path to the file
         :type path: str
         :param mode: Mode in which to open the file
         :type mode: str
+        :param fs_opts: Any kwargs required for opening a url using fsspec
+        :type fs_opts: dict
         :returns: This object
         :rtype: ApRESFile
         """
@@ -637,8 +730,35 @@ class ApRESFile(object):
         if path:
             self.path = path
 
-        self.fp = open(self.path, mode, encoding=self.DEFAULTS['file_encoding'])
-        self.file_size = os.fstat(self.fp.fileno()).st_size
+        if mode:
+            self.mode = mode
+
+        if fs_opts:
+            self.fs_opts = fs_opts
+
+        if 'b' not in self.mode:
+            self.mode += 'b'
+
+        # We use fsspec to load remote resources, otherwise we just open as
+        # a file on the local filesystem
+        if '://' in self.path:
+            try:
+                import fsspec
+            except ImportError:
+                raise ImportError("To open files on remote storage the 'remote' optional dependency must be installed: pip install bas-apres[remote]")
+
+            protocol = self.path.split('://')[0]
+            fs = fsspec.filesystem(protocol, **self.fs_opts)
+            self.fp = fs.open(self.path, mode=self.mode)
+            self.file_size = fs.info(self.path)['size']
+            self.fp.protocol = protocol
+            self.fp.remote = True
+        else:
+            self.fp = open(self.path, self.mode)
+            self.file_size = os.fstat(self.fp.fileno()).st_size
+            self.fp.remote = False
+
+        self.fp.encoding = self.DEFAULTS['file_encoding']
 
         return self
 
@@ -719,17 +839,9 @@ class ApRESFile(object):
         if not bursts:
             bursts = range(len(self.bursts))
 
-        # We append each burst, so ensure file is empty if it already exists
-        with open(path, 'w') as fout:
-            pass
-
-        # The ApRES .dat file format is a mixed mode file.  The header is
-        # text, and the data section is binary
-        for burst in self.bursts[bursts.start:bursts.stop:bursts.step]:
-            with open(path, 'a') as fout:
+        with open(path, 'wb') as fout:
+            for burst in self.bursts[bursts.start:bursts.stop:bursts.step]:
                 burst.write_header(fout, subbursts=subbursts, samples=samples)
-
-            with open(path, 'ab') as fout:
                 burst.write_data(fout, subbursts=subbursts, samples=samples)
 
     def burst_to_nc_object(self, burst, nco):
@@ -750,10 +862,10 @@ class ApRESFile(object):
         for key in burst.header:
             nco.setncattr(key, burst.header[key])
 
-        for j, key in enumerate(burst.DEFAULTS['data_dim_keys']):
-            nco.createDimension(key, burst.data_shape[j])
+        for key, n in zip(burst.data_dim_keys, burst.data_shape):
+            nco.createDimension(key, n)
 
-        data = nco.createVariable(self.DEFAULTS['netcdf_var_name'], burst.data_type, tuple(burst.DEFAULTS['data_dim_keys']))
+        data = nco.createVariable(self.DEFAULTS['netcdf_var_name'], burst.data_type, tuple(burst.data_dim_keys))
         data.setncatts(self.DEFAULTS['netcdf_attrs'])
         data[:] = burst.data
 

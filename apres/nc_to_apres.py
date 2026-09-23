@@ -4,11 +4,15 @@ import argparse
 from netCDF4 import Dataset
 
 from apres import ApRESFile
+import apres.__main__ as m
+
+PROGNAME = 'nc_to_apres'
 
 def main():
-    parser = argparse.ArgumentParser(description='recover the raw ApRES file from a converted netCDF4 file')
+    parser = argparse.ArgumentParser(description='recover the raw ApRES file from a converted netCDF4 file', prog=PROGNAME)
     parser.add_argument('infile', help='converted netCDF file of raw ApRES data')
     parser.add_argument('outfile', help='ApRES raw file', default=None, nargs='?')
+    m._add_common_opts(parser)
     args = parser.parse_args()
 
     # We can optionally be given an explicit output filename 
