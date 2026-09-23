@@ -158,13 +158,13 @@ class ApRESBurst(object):
                 return None
 
         # Contract header regex based on format delimiter
-        header_parts = re.match(r"(.+)" + self.DEFAULTS["header_line_delim"] + r"(.*)", header_line)
+        header_parts = re.match(r"(.+?)" + self.DEFAULTS["header_line_delim"] + r"(.*)", header_line)
         
         if header_parts == None:
             raise ValueError(f"Invalid header line '{header_line}' should match key=value format.")
         
         param_name = header_parts.group(1)
-        param_value = header_parts.group(2)
+        param_value = header_parts.group(2).lstrip().rstrip()
 
         if not param_name in DAT_FILE_PROPERTIES:
             if self.DEFAULTS['forgive']:

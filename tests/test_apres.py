@@ -503,23 +503,38 @@ class TestApRESBurst(unittest.TestCase):
         self.compare_reconstructed_header_lines(header, expected_header_lines)
 
     def test_header_timestamp_conversion(self):
-        in_file = self.base + '/short-test-data.dat'
-        with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
-            f = ApRESBurst(fp)
-            f.read_header()
-            self.assertTrue(isinstance(f.timestamp, datetime.datetime))
-            self.assertEqual(f.timestamp, datetime.datetime(2014,12,12,19,42,6))
+        test_files = [
+            ('/short-test-data.dat', datetime.datetime(2014,12,12,19,42,6)),
+            ('/short-test-data-ts.dat', datetime.datetime(2017, 7, 1, 5, 57, 39)),
+            ('/short-test-data-v1.dat', datetime.datetime(2015, 12, 22, 3, 25, 59)),
+            ('/short-test-data-v2.dat', datetime.datetime(2016, 1, 10, 10, 9, 37))
+        ]
+        for test_file, test_time in test_files:
+            in_file = self.base + test_file
+            print(in_file) #'/short-test-data.dat'
+            with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+                f = ApRESBurst(fp)
+                f.read_header()
+                self.assertTrue(isinstance(f.timestamp, datetime.datetime))
+                self.assertEqual(f.timestamp, test_time)
 
     def test_header_integer_conversion(self):
-        in_file = self.base + '/short-test-data.dat'
-        with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
-            f = ApRESBurst(fp)
-            f.read_header()
-            self.assertTrue(isinstance(f.WATCHDOG_TASK_SECS, int))
-            self.assertEqual(f.WATCHDOG_TASK_SECS, 3600)
+        test_files = [
+            ('/short-test-data.dat', 1),
+            ('/short-test-data-ts.dat', 1),
+            ('/short-test-data-v1.dat', 1),
+            ('/short-test-data-v2.dat', 1)
+        ]
+        for test_file, valid_value in test_files:
+            in_file = self.base + test_file
+            with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
+                f = ApRESBurst(fp)
+                f.read_header()
+                self.assertTrue(isinstance(f.nAttenuators, int))
+                self.assertEqual(f.nAttenuators, valid_value)
 
 
-    def test_immutable_parameter(self):        
+    def test_immutable_parameter(self):   
         in_file = self.base + '/short-test-data.dat'
         with open(in_file, encoding=ApRESFile.DEFAULTS['file_encoding']) as fp:
             f = ApRESBurst(fp)
