@@ -195,10 +195,34 @@ class ApRESBurst(object):
                 raise KeyError(f"Invalid header key {param_name}.")
             
         param_type = DAT_FILE_PROPERTIES[param_name]["type"]
-        if param_type == "int":
-            param_value = int(param_value)
-        elif param_type =="float":
-            param_value = float(param_value)
+        if isinstance(param_type, list):
+            # Split list by delimiter, defaulting to comma for 
+            # newer values
+            delimiter = ","
+            # otherwise select a tab for v1 files
+            if "\t" in param_value and "," not in param_value:
+                delimiter = "\t"
+
+            # Iterate over the parameter values and assign the correct
+            value_list = []
+            for value in param_value.split(delimiter):
+                # convert to int or float accordingly
+                if param_type[0] == "int":
+                    value_list.append(int(value))
+                elif param_type[0] =="float":
+                    value_list.append(float(value))
+                # otherwise, default to str
+                else:
+                    param_value.append(value)
+
+            param_value = value_list
+            pass
+
+        else:
+            if param_type == "int":
+                param_value = int(param_value)
+            elif param_type =="float":
+                param_value = float(param_value)
 
         # Parse special value if available 
         param_value = ApRESBurst.parse_special_parameter(
@@ -242,11 +266,11 @@ class ApRESBurst(object):
         if parameter.lower() == "time stamp":
             return datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
         
-        elif parameter == "TxAnt":
-            return [int(v) for v in value.split(",")]
+        # elif parameter == "TxAnt":
+        #     return [int(v) for v in value.split(",")]
 
-        elif parameter == "RxAnt":
-            return [int(v) for v in value.split(",")]#
+        # elif parameter == "RxAnt":
+        #     return [int(v) for v in value.split(",")]#
 
         else:
             return value

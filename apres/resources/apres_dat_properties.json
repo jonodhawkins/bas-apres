@@ -86,7 +86,7 @@
     },
     "Triples" : {
         "alias" : "Triples",
-        "type" : "str",
+        "type" : ["float"],
         "example" : "100,5,300,300,25,700,835,3,850,0,0,0",
         "description" : "List of triples (xmin,dx,xmax) at which data is to be reported in Iridium uplink.",
         "valid_source" : ["measured"]
@@ -199,21 +199,21 @@
     },
     "Attenuator1" : {
         "alias" : "Attenuator1",
-        "type" : "str",
+        "type" : ["int"],
         "example" : "20,0,0,0",
         "description" : "RF attenuator settings in comma separated list.",
         "valid_source" : ["measured", "simulated"]
     },
     "AFGain" : {
         "alias" : "AFGain",
-        "type" : "str",
+        "type" : ["int"],
         "example" : "-14,0,0,0",
         "description" : "AF gain settings in comma separated list.",
         "valid_source" : ["measured", "simulated"]
     },
     "TxAnt" : {
         "alias" : "TxAnt",
-        "type" : "str",
+        "type" : ["int"],
         "example" : "1,0,0,0,0,0,0,0",
         "description" : "Comma separated list of antennas to be used for transmit.",
         "format" : "0 = do not transmit, 1 = transmit.",
@@ -221,7 +221,7 @@
     },
     "RxAnt" : {
         "alias" : "RxAnt",
-        "type" : "str",
+        "type" : ["int"],
         "example" : "1,0,0,0,0,0,0,0",
         "description" : "Comma separated list of antennas to be used for receive.",
         "format" : "0 = do not transmit, 1 = transmit.",
@@ -321,7 +321,7 @@
     },
     "BatteryCheck" : {
         "alias" : "BatteryCheck",
-        "type" : "str",
+        "type" : ["float"],
         "example" : "0.0,0.0",
         "description" : "Two values (in volts) which determine battery voltage at which to wait until next burst, and secondly the voltage at which bursts will be restarted.",
         "format" : "(disable voltage),(enable voltage)",
